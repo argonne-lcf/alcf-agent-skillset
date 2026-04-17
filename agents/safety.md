@@ -15,8 +15,6 @@ description: >
 last_verified: "2026-04"
 ---
 
-# Agent Safety Guidelines
-
 ## Purpose
 
 Protect ALCF systems, user data, and project allocations from accidental damage by AI agents. These rules define hard boundaries that agents must not cross.

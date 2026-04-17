@@ -356,7 +356,7 @@ def write_index_md(skills: list[tuple[Path, dict]], output: Path) -> None:
     else:
         for cat in categories:
             cat_skills = [(r, m) for r, m in skills if m["category"] == cat]
-            lines.append(f"## {cat}")
+            lines.append(f"## {cat.replace('-', ' ').title()}")
             lines.append("")
             lines.append("| Title | Systems | Tags | Description | Last Verified |")
             lines.append("|-------|---------|------|-------------|---------------|")

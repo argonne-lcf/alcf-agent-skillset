@@ -18,5 +18,5 @@ jobs:
         run: python scripts/build_registry.py
       - name: Check for uncommitted changes
         run: |
-          git diff --exit-code skills.yaml INDEX.md || \
+          git diff -I '^generated:' --exit-code skills.yaml INDEX.md || \
           (echo "Registry out of date. Run: python scripts/build_registry.py" && exit 1)

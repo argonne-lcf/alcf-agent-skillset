@@ -15,8 +15,6 @@ description: >
 last_verified: "2026-04"
 ---
 
-# Agent Etiquette on ALCF Systems
-
 ## Purpose
 
 Prevent AI agents from disrupting shared ALCF resources. These rules protect other users, system stability, and the agent's own reputation.

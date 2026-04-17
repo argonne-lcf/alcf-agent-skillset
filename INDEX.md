@@ -20,21 +20,21 @@ Browse the tables below to find skills by category. Click the title to view the 
 
 ---
 
-## agents
+## Agents
 
 | Title | Systems | Tags | Description | Last Verified |
 |-------|---------|------|-------------|---------------|
 | [Agent Etiquette on ALCF Systems](agents/etiquette.md) | all | agents, etiquette, login-nodes, best-practices | Rules agents must follow when operating on ALCF systems. Covers login node restrictions, job submission courtesy, fil... | 2026-04 |
 | [Agent Safety Guidelines](agents/safety.md) | all | agents, safety, security, credentials | Security and safety rules for AI agents operating on ALCF systems. Covers credential handling, destructive operations... | 2026-04 |
 
-## containers
+## Containers
 
 | Title | Systems | Tags | Description | Last Verified |
 |-------|---------|------|-------------|---------------|
 | [Building Containers for Polaris](containers/polaris-container-build.md) | polaris | containers, apptainer, docker, mpich, polaris, build | How to build Docker containers targeting Polaris hardware (NVIDIA A100, Cray MPICH ABI). Covers Dockerfile requiremen... | 2026-04 |
 | [Running Containers on Polaris](containers/polaris-container-run.md) | polaris | containers, apptainer, mpi, polaris, runtime, bind-mounts | How to run Apptainer containers on Polaris compute nodes with MPI, GPU access, and Cray MPICH ABI override. Covers bi... | 2026-04 |
 
-## iri
+## Iri
 
 | Title | Systems | Tags | Description | Last Verified |
 |-------|---------|------|-------------|---------------|
@@ -42,13 +42,13 @@ Browse the tables below to find skills by category. Click the title to view the 
 | [IRI Job Submission](iri/job-submission.md) | all | iri, api, job-submission, pbs, base64 | How to submit and monitor PBS jobs through the IRI API using amsc-client. Covers the base64 script transfer workaroun... | 2026-04 |
 | [IRI Output Retrieval](iri/output-retrieval.md) | all | iri, api, output, filesystem | How to read job stdout/stderr through the IRI API after job completion. Covers output file routing, the fs.view() pat... | 2026-04 |
 
-## software
+## Software
 
 | Title | Systems | Tags | Description | Last Verified |
 |-------|---------|------|-------------|---------------|
 | [PyTorch Distributed Training on Polaris](software/frameworks/pytorch-ddp-polaris.md) | polaris | pytorch, ddp, distributed-training, nccl, torchrun, polaris, gpu | How to run multi-node PyTorch DDP training on Polaris using Apptainer containers with NCCL over Slingshot-11. Covers ... | 2026-04 |
 
-## systems
+## Systems
 
 | Title | Systems | Tags | Description | Last Verified |
 |-------|---------|------|-------------|---------------|

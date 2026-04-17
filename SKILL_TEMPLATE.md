@@ -3,7 +3,7 @@
 title: "Short, Specific Skill Title"
 category: systems          # systems | software | containers | jobs | storage | networking | ai-tools | iri | agents
 systems:
-  - aurora                 # aurora | polaris | sunspot | all
+  - aurora                 # aurora | polaris | all
 tags:
   - example-tag
 description: >
