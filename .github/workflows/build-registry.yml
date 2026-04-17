@@ -1,0 +1,22 @@
+name: Build Registry
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-registry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run registry builder
+        run: python scripts/build_registry.py
+      - name: Check for uncommitted changes
+        run: |
+          git diff --exit-code skills.yaml INDEX.md || \
+          (echo "Registry out of date. Run: python scripts/build_registry.py" && exit 1)

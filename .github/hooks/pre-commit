@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -e
+echo "Running ALCF skills registry builder..."
+python scripts/build_registry.py
+git add skills.yaml INDEX.md
+echo "Registry updated and staged."
