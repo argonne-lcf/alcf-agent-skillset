@@ -49,6 +49,7 @@ There are nine valid categories, listed alphabetically:
 
 - `aurora` -- Intel GPU (Ponte Vecchio) supercomputer
 - `polaris` -- NVIDIA A100 GPU supercomputer
+- `crux` -- AMD EPYC Rome CPU-only HPE Cray EX system
 - `all` -- use only if the skill genuinely applies to every ALCF system identically
 
 ---
