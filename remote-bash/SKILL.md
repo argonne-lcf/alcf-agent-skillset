@@ -1,6 +1,18 @@
 ---
+title: "Run Bash on ALCF Endpoints via Globus Compute"
 name: alcf-remote-bash
-description: Run a bash command on an ALCF compute endpoint (polaris / crux) via Globus Compute, using the wrapper script `remote-bash/remote_bash.py` in the repo. Use when the user wants to execute something on an ALCF system without going through the IRI API — typically for short interactive-style runs, env probes, or driving an existing analysis script. NOT a replacement for alcf-iri-job: this submits via Globus Compute, which queues a PBS job under the hood and waits synchronously for stdout/stderr.
+category: jobs
+systems: [polaris, crux]
+tags: [globus-compute, remote-bash, polaris, crux, interactive, env-probe]
+description: >
+  Run a bash command on an ALCF compute endpoint (polaris / crux) via Globus
+  Compute, using the wrapper script `remote-bash/remote_bash.py` in the repo.
+  Use when the user wants to execute something on an ALCF system without going
+  through the IRI API — typically for short interactive-style runs, env probes,
+  or driving an existing analysis script. NOT a replacement for alcf-iri-job:
+  this submits via Globus Compute, which queues a PBS job under the hood and
+  waits synchronously for stdout/stderr.
+last_verified: "2026-06"
 ---
 
 # alcf-remote-bash — Run bash on an ALCF endpoint via Globus Compute
