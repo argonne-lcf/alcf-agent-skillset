@@ -72,7 +72,7 @@ def main(
     timeout: int = 300,
     account: str = "datascience", 
     queue: str = "debug", 
-    venv: str = "/eagle/datascience/msalim/globus-compute-env", 
+    venv: str = "/opt/globus-compute-agent/venv-py313", 
     endpoint: Endpoint = "polaris",
 ):
     config = {
