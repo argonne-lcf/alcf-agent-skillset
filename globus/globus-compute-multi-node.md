@@ -148,17 +148,6 @@ Practical consequences:
   `os.environ["PARSL_WORKER_RANK"]` or set up MPS/cgroups yourself.
 - **Crux (CPU-only AMD EPYC Rome):** no GPUs. GPU binding is N/A.
 
-## Examples
-
-Working 30-task throughput scripts in this repo:
-
-- `globus/crux_mpiexec_throughput.py` — Crux, 2 nodes × 4 workers.
-- `globus/polaris_mpiexec_throughput.py` — Polaris, 2 nodes × 4 workers.
-- `globus/crux_mpiexec_hello.py` — single-task multi-node smoke test.
-
-Both produced ~6.4–6.7× speedup over serial and a balanced task histogram
-across both allocated nodes.
-
 ## Common Pitfalls
 
 - **All tasks land on one host despite `nodes_per_block: 2`:** missing
