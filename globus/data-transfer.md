@@ -47,11 +47,27 @@ different Globus service with different auth.
   username + CRYPTOCard/MobilePASS+ OTP.
 - For CLI/SDK use, the `globus-cli` or `globus-sdk` package installed in
   the environment you're running from. The CLI itself works from any
-  machine with network access — it does not have to run on ALCF.
+  machine with network access — it does not have to run on ALCF. If
+  nothing is on PATH locally, `uv tool install globus-cli` works (no
+  system Python touched). On Polaris, `module load globusv4` exposes
+  the CLI from the conda module instead.
 - For HPSS transfers: a keytab file at `~/.hpss/.ktb_<userid>` on a
   Polaris login node. Without it, `alcf#dtn_hpss` will reject auth.
 - For Eagle guest-collection management: a PI on the Eagle project.
   Proxies and members cannot create guest collections.
+
+### Agent usage notes
+
+- `globus login` and `globus session consent` are browser flows. An
+  agent running headless can't drive them — surface the exact command
+  to the user as `! globus login` / `! globus session consent '...'`
+  so it runs in their interactive shell and the cached token lands in
+  `~/.globus/` for subsequent CLI calls.
+- For DTN-to-DTN transfers between two ALCF mapped collections (e.g.
+  `alcf#dtn_home` → `alcf#dtn_flare`), run the CLI **locally**, not
+  through `alcf-remote-bash` on Polaris. Bytes move endpoint-to-endpoint
+  regardless of where the submit call originates, so routing through a
+  Polaris PBS debug slot just adds queue wait for nothing.
 
 ## Key Facts
 
@@ -245,7 +261,10 @@ globus transfer "${SRC}:/eagle/myproject/runs/2026-06/" \
 - **"ConsentRequired" / CLI exits 4:** the mapped collection needs an
   extra scope. The error message includes the exact `globus session
   consent ...` command — run it and retry. This is one-per-collection
-  per identity; it persists in the token cache.
+  per identity; it persists in the token cache. When both the source
+  and destination collections need consent, the error string bundles
+  both `data_access` scopes into one `[...]`-grouped consent call —
+  run it once, don't split it.
 
 - **`EndpointNotFound`:** typoed endpoint name, or the endpoint was
   retired/renamed. Run `globus endpoint search <name>` (e.g.
