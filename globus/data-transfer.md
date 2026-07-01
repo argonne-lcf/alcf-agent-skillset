@@ -11,7 +11,7 @@ description: >
   sync-level / encryption / verify-checksum semantics, guest collections on
   Eagle, and the Aurora `/home` proxychains caveat. Load when transferring data
   to/from ALCF filesystems or scripting transfers from an agent.
-last_verified: "2026-06"
+last_verified: "2026-07"
 alcf_docs_url: "https://docs.alcf.anl.gov/data-management/data-transfer/using-globus/"
 globus_docs_url: "https://docs.globus.org/cli/"
 ---
@@ -71,19 +71,28 @@ different Globus service with different auth.
 
 ## Key Facts
 
-- **ALCF mapped (DTN) collections — use the legacy names with the CLI;
-  they resolve to the current UUIDs:**
+- **ALCF mapped (DTN) collections — the CLI accepts the legacy `alcf#dtn_*`
+  names, but scripts / SDK code want the UUID. Current UUIDs (verified
+  2026-07-01 via `globus endpoint search`):**
 
-  | Collection name   | Filesystem | Path root                                | Notes |
-  |-------------------|------------|------------------------------------------|---|
-  | `alcf#dtn_home`   | agile-home (Polaris/Crux/Sophia) | `/<username>`                 | Not for Aurora `/home`. |
-  | `alcf#dtn_eagle`  | Eagle      | `/eagle/<project>` (== `/lus/eagle/projects/<project>`) | Backs guest collections. |
-  | `alcf#dtn_grand`  | Grand      | `/grand/<project>`                        | Legacy; check that your project still has Grand. |
-  | `alcf#dtn_flare`  | Flare (Aurora) | `/<project>` (== `/lus/flare/projects/<project>`) | Use this for Aurora project data. |
-  | `alcf#dtn_hpss`   | HPSS tape archive | HSI-style paths                  | Requires `.hpss/.ktb_<userid>` keytab. |
+  | Collection name   | UUID                                   | Filesystem | Path root                                | Notes |
+  |-------------------|----------------------------------------|------------|------------------------------------------|---|
+  | `alcf#dtn_home`   | `9032dd3a-e841-4687-a163-2720da731b5b` | agile-home (Polaris/Crux/Sophia) | `/<username>`                 | Not for Aurora `/home`. |
+  | `alcf#dtn_eagle`  | `05d2c76a-e867-4f67-aa57-76edeb0beda0` | Eagle      | `/eagle/<project>` (== `/lus/eagle/projects/<project>`) | Backs guest collections. |
+  | `alcf#dtn_grand`  | `3caddd4a-bb35-4c3d-9101-d9a0ad7f3a30` | Grand      | `/grand/<project>`                        | Legacy; check that your project still has Grand. |
+  | `alcf#dtn_flare`  | `f39a7a0f-5bfc-46ce-9615-ba9f8592814f` | Flare (Aurora) | `/<project>` (== `/lus/flare/projects/<project>`) | Use this for Aurora project data. Has `force_encryption` set — transfers with this collection are always encrypted, regardless of `--encrypt-data`. |
+  | `alcf#dtn_hpss`   | `bed0e34e-c7fa-4e8c-b291-8f70e634371e` | HPSS tape archive | HSI-style paths                  | Requires `.hpss/.ktb_<userid>` keytab. Distinct from `alcf#dtn_hpss_prod_test` and `alcf#dtn_test_hpss` — those are staging/test collections, not the prod archive. |
 
-  The Eagle mapped-collection UUID is `05d2c76a-e867-4f67-aa57-76edeb0beda0`
-  (visible in the Globus web app URL). UUIDs for the others can shift — `globus endpoint search alcf#dtn_<name>` returns the current one.
+- **AI Testbed collections** (SambaNova, Cerebras, Graphcore, Groq, etc.
+  under `/home` and `/projects` on the AI testbed login nodes):
+
+  | Collection name              | UUID                                   | Purpose |
+  |------------------------------|----------------------------------------|---|
+  | `alcf#ai_testbed_home`       | `060f3154-422b-4db0-bae3-37b209e29753` | AI Testbed user home directories |
+  | `alcf#ai_testbed_projects`   | `54b0a641-a1bf-4f51-af6e-4b6e7c97d28d` | AI Testbed project directories |
+  | `alcf#ai_testbed_software`   | `39321392-1154-442f-961c-8a129af6b6c2` | AI Testbed software / shared installs |
+
+  UUIDs can shift if a collection is rebuilt — `globus endpoint search alcf#dtn_<name>` returns the current one if a hard-coded UUID stops resolving.
 
 - **Aurora `/home` is *not* on `alcf#dtn_home`.** Currently the only way
   to move data in/out of Aurora `/home` over Globus is to run a
@@ -186,7 +195,12 @@ import globus_sdk
 # the SDK's CLI-token reuse works too. See globus_sdk docs.
 tc = globus_sdk.TransferClient(authorizer=authorizer)
 
+# ALCF mapped-collection UUIDs (see Key Facts table for the full list).
 EAGLE = "05d2c76a-e867-4f67-aa57-76edeb0beda0"   # alcf#dtn_eagle
+HOME  = "9032dd3a-e841-4687-a163-2720da731b5b"   # alcf#dtn_home
+GRAND = "3caddd4a-bb35-4c3d-9101-d9a0ad7f3a30"   # alcf#dtn_grand
+FLARE = "f39a7a0f-5bfc-46ce-9615-ba9f8592814f"   # alcf#dtn_flare  (force_encryption=on)
+HPSS  = "bed0e34e-c7fa-4e8c-b291-8f70e634371e"   # alcf#dtn_hpss
 DEST  = "<destination-collection-uuid>"
 
 tdata = globus_sdk.TransferData(
