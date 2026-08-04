@@ -9,191 +9,173 @@ tags:
   - output
   - filesystem
 description: >
-  How to read job stdout/stderr through the IRI API after job completion.
-  Covers output file routing, the fs.view() pattern, result parsing, and
-  the tail workaround. Load after submitting a job via IRI.
-last_verified: "2026-04"
+  How to read job stdout/stderr through the ALCF IRI API after a job completes,
+  using the async filesystem head/view endpoints and task polling. Covers the
+  verified result nesting, the tail (501) workaround, and container-job
+  debugging. Load after submitting a job via IRI.
+last_verified: "2026-07"
 ---
 
 ## Purpose
 
-Guide for reading job output (stdout/stderr) through the IRI API after job completion. Covers output file locations, the `fs.view()` pattern, result parsing across client versions, and workarounds for unimplemented operations.
+Guide for reading job output (stdout/stderr) through the ALCF IRI API after a job
+completes. Covers where output lands, reading it via the async filesystem
+endpoints, parsing the result, and workarounds for unimplemented operations.
+
+> **ALCF-direct API** (`https://api.alcf.anl.gov/api/v1`). Filesystem reads are
+> **asynchronous**: each call returns a task id you poll via `GET /task/{id}`.
+> See `api-fundamentals.md`. This is different from the AmSC (`amsc-client`)
+> `home.fs.view()` path.
 
 ## Prerequisites
 
-- amsc-client installed and authenticated (see `api-fundamentals.md`)
+- A valid IRI access token (see `api-fundamentals.md`)
 - A completed job submitted via IRI (see `job-submission.md`)
-- Home storage resource handle
+- The **storage** resource UUID for the filesystem holding the output
+  (Home `6115bd2c-957a-4543-abff-5fae52992ff2`, Eagle `1c3ad9d4-2e91-42bc-becb-72b1fde1235c`)
 
 ## Key Facts
 
-### Output File Routing
+### Output file routing
 
-When a job is submitted with `directory` and `name` parameters, output lands at:
+Where stdout/stderr land depends on the `stdout_path` / `stderr_path` you gave
+at submit time (and the scheduler's naming). If you set them to a directory,
+PBS writes `<name>.o<jobid>` / `<name>.e<jobid>` style files there; if you set
+explicit file paths, output goes to those files. Record the exact paths you
+submitted with so you know what to read back.
 
-| Output | Path |
-|--------|------|
-| stdout | `{directory}/{name}.stdout` |
-| stderr | `{directory}/{name}.stderr` |
+### Read via a STORAGE resource, with the async task flow
 
-For example, a job submitted with `directory="/home/user/project"` and `name="my-run"` produces:
-- `/home/user/project/my-run.stdout`
-- `/home/user/project/my-run.stderr`
+Filesystem reads run against a **storage** resource (Home/Eagle), never a
+compute resource. Every read is a two-step async flow:
 
-### Reading Output via the Home Storage Resource
+1. Call `GET /filesystem/head/{storage_id}` or `GET /filesystem/view/{storage_id}`
+   → returns a **task id**.
+2. Poll `GET /task/{task_id}` until `status` is `completed` (or `failed`/`error`),
+   then read the content.
 
-**Always use the Home storage resource** (`home.fs.view()`), never the compute resource (`polaris.fs.view()` returns HTTP 400).
+- **`head`** returns the first N **lines** (`lines` param);
+  content nests at `result.output.content` with `content_type: "lines"`.
+- **`view`** returns `size` **bytes** starting at `offset`;
+  content nests at `result.output.content` with `content_type: "bytes"`.
 
-```python
-home = alcf.resource("Home")
-task = home.fs.view(f"{WORK_DIR}/{job_name}.stdout")
-task.wait(timeout=60)
-content = task.result
+### Verified result nesting
+
+For a completed `head`/`view` task, the text is at:
+
+```
+task["result"]["output"]["content"]
 ```
 
-### Filesystem Sync Delay
-
-**Always `time.sleep(5)` before reading output** after job completion. The filesystem may not have synced the output files yet. Reading too soon produces empty or partial content.
-
-### Result Parsing
-
-The result format varies by client version -- it may be a dict or a raw string. Always handle both:
+Guard defensively, since intermediate levels can be absent on error:
 
 ```python
-task = home.fs.view(f"{WORK_DIR}/{fname}")
-task.wait(timeout=60)
-r = task.result
-if isinstance(r, dict):
-    content = r.get('output', r).get('content', '')
-else:
-    content = str(r)
+def extract_content(task):
+    res = task.get("result") or {}
+    out = res.get("output")
+    if isinstance(out, dict):
+        return out.get("content", "")
+    # some ops return a bare string or list under result
+    return out if isinstance(out, str) else res.get("content", "")
 ```
 
-### tail() Workaround
+### `tail` is 501 — slice a `view` instead
 
-`home.fs.tail()` returns 501 (Not Implemented). To read the end of a file, read the full file with `view()` and slice:
+`GET /filesystem/tail/{rid}` returns **501 Not Implemented**. To read the end of
+a file, `view` it (optionally with a large `offset`) and slice the content:
+`content[-3000:]`.
 
-```python
-task = home.fs.view(f"{WORK_DIR}/{job_name}.stdout")
-task.wait(timeout=60)
-r = task.result
-if isinstance(r, dict):
-    content = r.get('output', r).get('content', '')
-else:
-    content = str(r)
+### Container jobs: check stderr first
 
-# Get last 3000 characters (tail workaround)
-tail_content = content[-3000:]
-```
-
-### Container Jobs: Check stderr First
-
-For container MPI jobs, stderr is MORE informative than stdout. It contains module loads, Apptainer startup messages, Kokkos initialization output, and error details. Always check stderr when debugging container jobs.
+For container / MPI jobs, **stderr** is usually more informative than stdout —
+it carries module loads, Apptainer startup messages, and error details. Read
+both, but look at stderr first when debugging.
 
 ## Examples
 
-### Complete read_output() Function
+### Read the first lines of a file (head)
 
 ```python
-def read_output(home, work_dir, job_name, max_chars=10000):
-    """Read stdout and stderr for a completed job.
+import time
+import requests
+from alcf_facility_api_globus_token import get_access_token
 
-    Args:
-        home: Home storage resource handle
-        work_dir: Job working directory
-        job_name: Job name (from submit() name parameter)
-        max_chars: Max characters to display per file (head+tail)
+BASE = "https://api.alcf.anl.gov/api/v1"
+HOME = "6115bd2c-957a-4543-abff-5fae52992ff2"
+headers = {"Authorization": f"Bearer {get_access_token()}"}
 
-    Returns:
-        dict with 'stdout' and 'stderr' content strings
-    """
-    import time
-    time.sleep(5)
-    results = {}
-    for label, fname in [("stdout", f"{job_name}.stdout"),
-                          ("stderr", f"{job_name}.stderr")]:
+def poll(task_id, timeout=60):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        t = requests.get(f"{BASE}/task/{task_id}", headers=headers).json()
+        if t.get("status") in ("completed", "failed", "error"):
+            return t
+        time.sleep(1)
+    raise TimeoutError(task_id)
+
+def extract_content(task):
+    res = task.get("result") or {}
+    out = res.get("output")
+    if isinstance(out, dict):
+        return out.get("content", "")
+    return out if isinstance(out, str) else res.get("content", "")
+
+# head: first 40 lines
+r = requests.get(f"{BASE}/filesystem/head/{HOME}",
+                 params={"path": "/home/<username>/logs/my_job.o12345", "lines": 40},
+                 headers=headers)
+r.raise_for_status()
+task = poll(r.json()["id"])
+print(extract_content(task))
+```
+
+### Read a byte range (view) and tail-by-slice
+
+```python
+# view: 4096 bytes from the start
+r = requests.get(f"{BASE}/filesystem/view/{HOME}",
+                 params={"path": "/home/<username>/logs/my_job.o12345",
+                         "size": 4096, "offset": 0},
+                 headers=headers)
+task = poll(r.json()["id"])
+content = extract_content(task)
+
+# tail workaround: last 3000 chars
+print(content[-3000:])
+```
+
+### Read stdout and stderr for a completed job
+
+```python
+def read_output(storage_id, stdout_path, stderr_path, lines=200):
+    out = {}
+    for label, path in (("stdout", stdout_path), ("stderr", stderr_path)):
         try:
-            task = home.fs.view(f"{work_dir}/{fname}")
-            task.wait(timeout=60)
-            r = task.result
-            if isinstance(r, dict):
-                content = r.get('output', r).get('content', '')
-            else:
-                content = str(r)
-            results[label] = content
-            print(f"\n-- {label.upper()} ({len(content)} chars) --")
-            if len(content) > max_chars:
-                half = max_chars // 2
-                print(content[:half])
-                print(f"\n... ({len(content) - max_chars} chars omitted) ...\n")
-                print(content[-half:])
-            else:
-                print(content)
+            r = requests.get(f"{BASE}/filesystem/head/{storage_id}",
+                             params={"path": path, "lines": lines}, headers=headers)
+            r.raise_for_status()
+            out[label] = extract_content(poll(r.json()["id"]))
         except Exception as e:
-            print(f"{label}: {type(e).__name__}: {e}")
-    return results
-```
-
-### Usage with a Completed Job
-
-```python
-from amsc_client import Client
-
-# -- Client setup (see api-fundamentals.md) --
-GLOBUS_APP_ID = 'e4f48665-38b5-4833-a89e-849c71f5b3e3'
-RESOURCE_SERVER = '8b84fc2d-49e9-49ea-b54d-b3a29a70cf31'
-
-client = Client(
-    base_url='https://api.american-science-cloud.org/api/current',
-    auth_method="globus",
-    globus_client_id=GLOBUS_APP_ID,
-    requested_scopes=(
-        f'openid profile email '
-        f'https://auth.globus.org/scopes/{GLOBUS_APP_ID}/amsc_test'
-    ),
-    resource_server=RESOURCE_SERVER,
-    use_id_token=True,
-)
-
-alcf = client.facility("alcf")
-home = alcf.resource("Home")
-
-# Read output from a completed job
-results = read_output(home, "/home/username/my_project", "my-training-run")
-
-# Access content programmatically
-stdout_text = results.get("stdout", "")
-stderr_text = results.get("stderr", "")
-```
-
-### Tail Workaround Function
-
-```python
-def tail_output(home, file_path, num_chars=3000):
-    """Read the last num_chars of a file (workaround for tail() 501)."""
-    task = home.fs.view(file_path)
-    task.wait(timeout=60)
-    r = task.result
-    if isinstance(r, dict):
-        content = r.get('output', r).get('content', '')
-    else:
-        content = str(r)
-    return content[-num_chars:]
-
-# Usage
-last_lines = tail_output(home, "/home/username/my_project/my-run.stdout")
-print(last_lines)
+            out[label] = f"<{type(e).__name__}: {e}>"
+    return out
 ```
 
 ## Common Pitfalls
 
-- **Reading too soon after job completion.** The filesystem may not have synced yet, producing empty or partial output. Always `time.sleep(5)` before reading.
-- **Using `polaris.fs.view()` instead of `home.fs.view()`.** Compute resources do not support filesystem operations. Returns HTTP 400.
-- **Not handling both dict and string result formats.** Different client versions return different types. Always check `isinstance(r, dict)` before accessing keys.
-- **Using `home.fs.tail()`.** Returns 501 Not Implemented. Read the full file with `view()` and slice the result.
-- **Only checking stdout for container jobs.** For container MPI jobs, stderr contains module loads, Apptainer messages, and most error details. Always read both.
+- **Skipping the async poll.** `head`/`view` return a task id; you must poll
+  `GET /task/{task_id}` for the content.
+- **Reading the wrong nesting.** Content is at `result.output.content`, not at
+  `result` directly. Use a defensive extractor.
+- **Using a compute resource UUID for a read.** Filesystem ops need a storage
+  UUID (Home/Eagle).
+- **Calling `tail`.** It returns 501 — `view` and slice instead.
+- **Reading immediately after job completion.** The filesystem may not have
+  flushed yet; if content looks empty/partial, retry after a short delay.
+- **Only checking stdout for container jobs.** stderr holds the module/Apptainer
+  detail — read it first when debugging.
 
 ## See Also
 
-- `api-fundamentals.md` -- Client setup, authentication, and filesystem API status
+- `api-fundamentals.md` -- Auth, resource UUIDs, async task model, FS status table
 - `job-submission.md` -- Submitting and monitoring PBS jobs through the IRI API
+- ALCF IRI API docs: <https://docs.alcf.anl.gov/services/iri-api/>
