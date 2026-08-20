@@ -72,14 +72,14 @@ def main(
     timeout: int = 300,
     account: str = "datascience", 
     queue: str = "debug", 
-    venv: str = "/eagle/datascience/msalim/globus-compute-env", 
+    venv: str = "/opt/globus-compute-agent/venv-py313", 
     endpoint: Endpoint = "polaris",
 ):
     config = {
         'max_retries_on_system_failure': 0,
         'account': account,
         'queue': queue,
-        'config_key': f"source {venv.rstrip('/')}/bin/activate",
+        'worker_init': f"source {venv.rstrip('/')}/bin/activate",
     }
     endpoint_id = EP_MAP[endpoint]
 

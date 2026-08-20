@@ -59,7 +59,7 @@ uv run ./remote-bash/remote_bash.py \
   --queue    <queue>            # default: debug
   --cwd      <remote_dir>       # optional; defaults to endpoint's home
   --timeout  <seconds>          # default: 300; killed remotely after this
-  --venv     <conda/venv path>  # default: /eagle/datascience/msalim/globus-compute-env
+  --venv     <conda/venv path>  # default: /opt/globus-compute-agent/venv-py313
   "<bash command>"
 ```
 
