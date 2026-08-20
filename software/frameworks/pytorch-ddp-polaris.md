@@ -28,7 +28,7 @@ Run multi-node distributed PyTorch training on Polaris using containers with NCC
 
 - Docker locally (for building the container image).
 - Polaris allocation.
-- `amsc-client` if using IRI API.
+- An IRI API access token if submitting via the IRI API (see `iri/api-fundamentals.md`).
 
 ## Key Facts
 

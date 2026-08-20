@@ -29,8 +29,12 @@ None — load alongside `etiquette.md` at the start of any ALCF session.
 
 - NEVER store credentials, API keys, or tokens in job scripts or files on shared filesystems.
 - NEVER echo or print credentials to stdout/stderr — job output files are stored in shared directories and may be readable by others.
-- Use environment variables or secured config files (`~/.amsc/credentials.json` is managed by amsc-client).
-- When writing job scripts via IRI base64 pattern, ensure no credentials are embedded in the script content.
+- Use environment variables or secured config files. The IRI API token cache
+  (`~/.globus/app/.../alcf_facility_api_app/tokens.json`) is managed by the ALCF
+  auth helper — protect it like any credential and never commit or copy it to a
+  shared filesystem.
+- When submitting jobs via the IRI API, ensure no credentials are embedded in the
+  job command or script content.
 
 ### Destructive Operations
 
