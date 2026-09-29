@@ -65,10 +65,44 @@ explicit header.
 
 ### Authentication
 
-Auth uses a Globus OAuth token obtained with the ALCF auth helper script. There
-is a single token for the entire IRI API — the same token is used for
-`/compute/*`, `/filesystem/*`, and `/account/*` (despite the underlying scope
-being named `filesystem`).
+Auth uses a Globus OAuth token. There is a single token for the entire IRI
+API — the same token is used for `/compute/*`, `/filesystem/*`, and
+`/account/*` (despite the underlying scope being named `filesystem`). You can
+obtain it two ways:
+
+- **Option A — `alcf-tokens` (recommended):** the centralized ALCF token CLI.
+- **Option B — the `alcf_facility_api_globus_token.py` helper script.**
+
+Both mint the same IRI scope
+(`https://auth.globus.org/scopes/6be511f6-a071-471f-9bc0-02a0d0836723/filesystem`);
+use whichever is already set up. Send the result as `Authorization: Bearer
+<access_token>` on every authenticated request either way.
+
+#### Option A — alcf-tokens (recommended)
+
+`alcf-tokens` is the centralized ALCF token CLI. Load the **`alcf-tokens`**
+skill for the full reference; for IRI you only need:
+
+```bash
+pip install alcf-tokens
+alcf-tokens login iri            # one-time browser login (or: alcf-tokens login, all services)
+alcf-tokens test-token iri       # -> {"ready": true, "error": null}
+```
+
+```python
+from alcf_tokens.auth import get_access_token   # refreshes as needed
+access_token = get_access_token("iri")
+headers = {"Authorization": f"Bearer {access_token}",
+           "User-Agent": "alcf-agent/1.0"}       # UA still required (see above)
+```
+
+Or from the shell: `access_token=$(alcf-tokens get-token iri)`.
+
+The examples below use the Option B `get_access_token()` import; to use
+alcf-tokens instead, swap it for
+`from alcf_tokens.auth import get_access_token` and call `get_access_token("iri")`.
+
+#### Option B — alcf_facility_api_globus_token.py
 
 **1. Install the Globus SDK and download the auth script:**
 
@@ -261,3 +295,5 @@ print(t["result"]["output"])
 - `output-retrieval.md` -- Reading job stdout/stderr after completion
 - ALCF IRI API docs: <https://docs.alcf.anl.gov/services/iri-api/>
 - OpenAPI spec: <https://api.alcf.anl.gov/openapi.json>
+- `alcf-tokens` skill (`../software/alcf-tokens.md`) — centralized ALCF token
+  CLI, the Option A auth path: <https://github.com/argonne-lcf/alcf-tokens>

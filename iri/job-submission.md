@@ -36,7 +36,9 @@ job request schema, listing/inspecting/cancelling jobs, and monitoring patterns.
 
 ## Prerequisites
 
-- A valid IRI access token (see `api-fundamentals.md`)
+- A valid IRI access token (see `api-fundamentals.md` — via `alcf-tokens login
+  iri` / `get_access_token("iri")`, or the `alcf_facility_api_globus_token.py`
+  helper)
 - An ALCF allocation with a valid project account
 - The target compute resource UUID (e.g. Polaris `55c1c993-1124-47f9-b823-514ba3849a9a`)
 

@@ -3,6 +3,7 @@
 # dependencies = [
 #   "globus-compute-sdk",
 #   "typer",
+#   "alcf-tokens",
 # ]
 # ///
 def remote_bash(cmd, cwd=None, timeout=300):
@@ -44,7 +45,7 @@ def remote_bash(cmd, cwd=None, timeout=300):
     stdout, stderr = fit(stdout, stderr)
     return {"exit_code": rc, "stdout": stdout, "stderr": stderr}
 
-from globus_compute_sdk import Executor
+from globus_compute_sdk import Executor, Client
 from globus_compute_sdk.serialize import ComputeSerializer, CombinedCode
 from typer import Typer
 import sys
@@ -83,7 +84,25 @@ def main(
     }
     endpoint_id = EP_MAP[endpoint]
 
-    with Executor(endpoint_id=endpoint_id, user_endpoint_config=config, serializer=serializer) as gce:
+    # Prefer tokens managed by the `alcf-tokens` CLI (`alcf-tokens login`), if
+    # present. get_service_authorizer reads the stored globus-compute token from
+    # ~/.globus/app/<client-id>/alcf_tokens/tokens.json. If alcf-tokens isn't
+    # installed or the user hasn't logged in, fall back to globus-compute-sdk's
+    # own auth cache (~/.globus_compute/) — but say so, so a stale/expired
+    # alcf-tokens login doesn't fail silently.
+    try:
+        from alcf_tokens.auth import get_service_authorizer
+        authorizer = get_service_authorizer("globus-compute")
+        gcc = Client(authorizer=authorizer)
+    except ImportError:
+        gcc = None
+    except Exception as e:
+        print(f"alcf-tokens auth unavailable ({e}); falling back to "
+              "globus-compute-sdk default auth. Run `alcf-tokens login "
+              "globus-compute` to use alcf-tokens.", file=sys.stderr)
+        gcc = None
+
+    with Executor(endpoint_id=endpoint_id, client=gcc, user_endpoint_config=config, serializer=serializer) as gce:
         future = gce.submit(remote_bash, cmd=command, cwd=cwd, timeout=timeout)
         print("Submitted task to remote endpoint, waiting for result...", file=sys.stderr)
         print(future.result(timeout=timeout+10))
