@@ -12,7 +12,7 @@ description: >
   configuring or invoking a facility multiuser endpoint. For multi-node
   fan-out (place=scatter), block lifecycle, and GPU caveats, also load
   alcf-globus-compute-multi-node.
-last_verified: "2026-06"
+last_verified: "2026-09"
 globus_docs_url: "https://globus-compute.readthedocs.io/en/latest/endpoints/multi_user.html"
 ---
 
@@ -146,6 +146,10 @@ with Executor(
 ) as gce:
     print(gce.submit(hello).result(timeout=900))
 ```
+
+This path was verified against Polaris on 2026-09-29 via `remote_bash.py`
+(`get_service_authorizer("globus-compute")` → `Client` → `Executor`, job
+returned `exit_code: 0`).
 
 Compute-specific notes on top of the `alcf-tokens` skill:
 

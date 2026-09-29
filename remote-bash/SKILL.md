@@ -12,7 +12,7 @@ description: >
   or driving an existing analysis script. NOT a replacement for alcf-iri-job:
   this submits via Globus Compute, which queues a PBS job under the hood and
   waits synchronously for stdout/stderr.
-last_verified: "2026-06"
+last_verified: "2026-09"
 ---
 
 # alcf-remote-bash — Run bash on an ALCF endpoint via Globus Compute
@@ -41,6 +41,10 @@ Prefer `alcf-iri-job` instead when:
   (`remote_bash` only returns stdout/stderr — files stay on the cluster).
 
 ## Auth
+
+The `alcf-tokens` path below was verified end-to-end against Polaris on
+2026-09-29 (`--endpoint polaris --queue debug "hostname && date"` returned
+`exit_code: 0` with no fallback warning).
 
 There are two ways `remote_bash.py` can authenticate to Globus Compute, and
 the script tries them in this order:

@@ -46,9 +46,9 @@ Browse the tables below to find skills by category. Click the title to view the 
 
 | Title | Systems | Tags | Description | Last Verified |
 |-------|---------|------|-------------|---------------|
-| [ALCF Facility Multiuser Globus Compute Endpoints](globus/globus-compute-multiuser-endpoints.md) | polaris, crux | globus-compute, multiuser-endpoint, polaris, crux, pbs, user-endpoint-config | Reference for the facility-supported multiuser Globus Compute endpoints on Polaris and Crux. Covers endpoint UUIDs, t... | 2026-06 |
+| [ALCF Facility Multiuser Globus Compute Endpoints](globus/globus-compute-multiuser-endpoints.md) | polaris, crux | globus-compute, multiuser-endpoint, polaris, crux, pbs, user-endpoint-config | Reference for the facility-supported multiuser Globus Compute endpoints on Polaris and Crux. Covers endpoint UUIDs, t... | 2026-09 |
 | [Globus Compute Multi-Node Fan-Out on Polaris and Crux](globus/globus-compute-multi-node.md) | polaris, crux | globus-compute, multi-node, mpiexec, place-scatter, blocks, gpu-binding, polaris, crux | How to spread Globus Compute workers across multiple physical nodes via the ALCF facility multiuser endpoint, and how... | 2026-06 |
-| [Run Bash on ALCF Endpoints via Globus Compute](remote-bash/SKILL.md) | polaris, crux | globus-compute, remote-bash, polaris, crux, interactive, env-probe | Run a bash command on an ALCF compute endpoint (polaris / crux) via Globus Compute, using the wrapper script `remote-... | 2026-06 |
+| [Run Bash on ALCF Endpoints via Globus Compute](remote-bash/SKILL.md) | polaris, crux | globus-compute, remote-bash, polaris, crux, interactive, env-probe | Run a bash command on an ALCF compute endpoint (polaris / crux) via Globus Compute, using the wrapper script `remote-... | 2026-09 |
 
 ## Software
 
