@@ -29,7 +29,9 @@ endpoints, parsing the result, and workarounds for unimplemented operations.
 
 ## Prerequisites
 
-- A valid IRI access token (see `api-fundamentals.md`)
+- A valid IRI access token (see `api-fundamentals.md` — via `alcf-tokens login
+  iri` / `get_access_token("iri")`, or the `alcf_facility_api_globus_token.py`
+  helper)
 - A completed job submitted via IRI (see `job-submission.md`)
 - The **storage** resource UUID for the filesystem holding the output
   (Home `6115bd2c-957a-4543-abff-5fae52992ff2`, Eagle `1c3ad9d4-2e91-42bc-becb-72b1fde1235c`)

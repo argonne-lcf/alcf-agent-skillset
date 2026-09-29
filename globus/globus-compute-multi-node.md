@@ -24,7 +24,8 @@ covers what you need to add or know once a workload outgrows a single node.
 ## Prerequisites
 
 - `alcf-globus-compute-multiuser-endpoints` loaded — for endpoint UUIDs,
-  schema, template, and auth.
+  schema, template, and auth (including the `alcf-tokens` login path; pass its
+  `get_service_authorizer("globus-compute")` client to `Executor(client=...)`).
 - Comfortable reading PBS submit scripts and `$PBS_NODEFILE`.
 
 ## Key Facts
