@@ -43,15 +43,20 @@ and per-worker GPU binding, see `alcf-globus-compute-multi-node`.
 - A Globus Auth identity linked to an ALCF account with an active project
   allocation on the target system.
 - `globus-compute-sdk` installed locally.
-- First call in a fresh environment opens an interactive browser login to
-  refresh Globus Auth tokens cached under `~/.globus_compute/`.
+- Auth via **either** the `alcf-tokens` CLI (`alcf-tokens login globus-compute`;
+  see the `alcf-tokens` skill, `../software/alcf-tokens.md`) **or** the SDK's own
+  browser login. The first SDK call in a fresh environment opens an interactive
+  browser login to refresh Globus Auth tokens cached under `~/.globus_compute/`.
+  See **Auth** below.
 
 ## Key Facts
 
 - **Endpoint UUIDs (as of 2026-06):**
   - Polaris: `9a947ba5-f537-4681-acf3-cc66485aadec`
   - Crux:    `d01d0c83-e570-4977-9170-1b8f2316e7c6`
-- **Auth:** Globus Auth tokens in `~/.globus_compute/`. No IRI involvement.
+- **Auth:** either `alcf-tokens` (`alcf-tokens login globus-compute`, then
+  build a `Client` from `get_service_authorizer("globus-compute")`) or the
+  SDK's own tokens in `~/.globus_compute/`. No IRI involvement.
 - **Required `user_endpoint_config` keys:** `queue`, `account`. Everything
   else is optional and falls back to template defaults.
 - **`additionalProperties: true`** on the schema — unknown keys (e.g.
@@ -111,13 +116,59 @@ The endpoint's Jinja template fills these defaults when a key is absent:
 
 ## Auth
 
-The first SDK call in a session opens a browser login (or device-code URL
-in headless contexts) and caches tokens under `~/.globus_compute/`. Tokens
-auto-refresh; on expiry the next call re-prompts.
+There are two supported ways to authenticate; pick one.
+
+### Option A — `alcf-tokens` (recommended for agents/scripts)
+
+`alcf-tokens` is the centralized ALCF token CLI. Log in once, then build the
+Globus Compute `Client` from its authorizer. Load the **`alcf-tokens`** skill
+(`../software/alcf-tokens.md`) for the full reference; for compute you need:
+
+```bash
+pip install alcf-tokens
+alcf-tokens login globus-compute # one-time browser login (or: alcf-tokens login, all services)
+alcf-tokens get-token globus-compute   # verify: exit 0 + non-empty token
+```
+
+```python
+from globus_compute_sdk import Executor, Client
+from globus_compute_sdk.serialize import ComputeSerializer, CombinedCode
+from alcf_tokens.auth import get_service_authorizer
+
+# get_service_authorizer refreshes the stored token as needed.
+gcc = Client(authorizer=get_service_authorizer("globus-compute"))
+
+with Executor(
+    endpoint_id=POLARIS,
+    client=gcc,                          # <-- pass the alcf-tokens-backed client
+    user_endpoint_config={"account": "datascience", "queue": "debug"},
+    serializer=ComputeSerializer(strategy_code=CombinedCode()),
+) as gce:
+    print(gce.submit(hello).result(timeout=900))
+```
+
+Compute-specific notes on top of the `alcf-tokens` skill:
+
+- **The package must be importable in the env you run from** — install it into
+  that venv/conda env, or add it to a `uv run --script` inline dependency block.
+  If the import fails, you silently fall back to Option B.
+- **Use `get-token` as the presence check.** `alcf-tokens test-token
+  globus-compute` currently reports "not yet implemented" for this service; a
+  successful `get-token globus-compute` (exit 0, non-empty) is the check.
+- If there is no valid token, `get_service_authorizer` raises
+  `alcf_tokens.auth.AuthError` — run `alcf-tokens login globus-compute`.
+- The `alcf-remote-bash` skill (`../remote-bash/`) already wires up this path;
+  see it for a working end-to-end example.
+
+### Option B — globus-compute-sdk default cache
+
+If you don't pass a `client=`, the first SDK call in a session opens a browser
+login (or device-code URL in headless contexts) and caches tokens under
+`~/.globus_compute/`. Tokens auto-refresh; on expiry the next call re-prompts.
 
 If you hit an auth error in a non-interactive environment (CI, agent
 sandbox without a browser), run any submission interactively once on the
-same machine to seed the cache.
+same machine to seed the cache — or use Option A.
 
 ## Examples
 
@@ -143,6 +194,10 @@ with Executor(
 ) as gce:
     print(gce.submit(hello).result(timeout=900))
 ```
+
+To authenticate via `alcf-tokens` instead of the SDK's browser cache, build a
+`Client` from `get_service_authorizer("globus-compute")` and pass it as
+`client=` (see **Auth → Option A**).
 
 Use a generous `result(timeout=...)` (≥600s) — the first call after an
 idle endpoint pays PBS queue wait.
@@ -194,7 +249,10 @@ agent venv PATH export or the worker won't find its own Python.
 
 - `alcf-globus-compute-multi-node` — distributing workers across nodes
   (`place=scatter`), block/job/task lifecycle, GPU binding caveats
-- `../remote-bash/SKILL.md` — bash-command wrapper around these endpoints
+- `../remote-bash/SKILL.md` — bash-command wrapper around these endpoints;
+  working example of the `alcf-tokens` auth path
+- `alcf-tokens` skill (`../software/alcf-tokens.md`) — centralized ALCF token
+  CLI: https://github.com/argonne-lcf/alcf-tokens
 - `../iri/job-submission.md` — alternative when you want IRI's submit/poll
   semantics or non-Globus auth
 - `../systems/polaris/overview.md` / `../systems/crux/overview.md`

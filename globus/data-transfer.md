@@ -51,6 +51,9 @@ different Globus service with different auth.
   nothing is on PATH locally, `uv tool install globus-cli` works (no
   system Python touched). On Polaris, `module load globusv4` exposes
   the CLI from the conda module instead.
+- For SDK scripts, the `alcf-tokens` skill (`../software/alcf-tokens.md`) is the
+  simplest way to get a Transfer authorizer without hand-rolling a native-app
+  OAuth flow — see the Auth model key fact and the SDK example below.
 - For HPSS transfers: a keytab file at `~/.hpss/.ktb_<userid>` on a
   Polaris login node. Without it, `alcf#dtn_hpss` will reject auth.
 - For Eagle guest-collection management: a PI on the Eagle project.
@@ -105,6 +108,32 @@ different Globus service with different auth.
   on mapped collections need `globus session consent <scope>` (the
   error message gives the exact scope) before the transfer will
   succeed.
+
+- **`alcf-tokens` for SDK auth (optional but easy):** the `alcf-tokens` CLI
+  mints and refreshes a Transfer token and hands your script a ready-made
+  authorizer, so you don't hand-roll a `NativeAppAuthClient` flow. Because a
+  transfer moves data between two collections, authorize **both ends at login**,
+  then read them back with the same entries:
+
+  ```bash
+  # A mapped ALCF collection needs :data_access; add :https for direct HTTPS.
+  alcf-tokens login --authorize-transfer home \
+                    --authorize-transfer 05d2c76a-e867-4f67-aa57-76edeb0beda0:data_access
+  ```
+
+  ```python
+  import globus_sdk
+  from alcf_tokens.auth import get_transfer_authorizer
+  # Same collection entries as login, so a missing consent surfaces clearly.
+  tc = globus_sdk.TransferClient(authorizer=get_transfer_authorizer(["home", "eagle"]))
+  ```
+
+  Built-in aliases (each with `data_access`): `home`, `eagle`, `flare`. For
+  direct HTTPS on a collection, authorize `<collection>:https` and use
+  `get_https_authorizer(<collection>)`. One `alcf-tokens login` covers Transfer,
+  Compute, and IRI at once — see the **`alcf-tokens`** skill
+  (`../software/alcf-tokens.md`) for the full reference, the token cache
+  location, and `AuthError` handling.
 
 - **`globus transfer` is async.** It returns a task ID immediately and
   the bytes move in the background. Block with `globus task wait
@@ -190,9 +219,13 @@ globus transfer "$SRC" "$DST" --batch batch.txt --label "ckpt + logs"
 ```python
 import globus_sdk
 
-# Authorizer: prefer NativeAppAuthClient + refresh token in cache for
-# headless use; for interactive scripts, ConfidentialAppAuthClient or
-# the SDK's CLI-token reuse works too. See globus_sdk docs.
+# Authorizer options, easiest first:
+#   1. alcf-tokens: authorize both collections at login (see Auth model above),
+#      then `get_transfer_authorizer([...])` with the same entries.
+#   2. NativeAppAuthClient + refresh token in cache for headless use.
+#   3. For interactive scripts, ConfidentialAppAuthClient or SDK CLI-token reuse.
+from alcf_tokens.auth import get_transfer_authorizer
+authorizer = get_transfer_authorizer(["eagle"])  # + the destination collection
 tc = globus_sdk.TransferClient(authorizer=authorizer)
 
 # ALCF mapped-collection UUIDs (see Key Facts table for the full list).
@@ -329,7 +362,10 @@ globus transfer "${SRC}:/eagle/myproject/runs/2026-06/" \
 ## See Also
 
 - `alcf-globus-compute-multiuser-endpoints` — running *code* on Polaris/Crux
-  through Globus Compute (different service, different auth)
+  through Globus Compute (different service, but the same `alcf-tokens` login
+  can cover it)
+- `alcf-tokens` skill (`../software/alcf-tokens.md`) — centralized ALCF token
+  CLI: https://github.com/argonne-lcf/alcf-tokens
 - `../iri/output-retrieval.md` — alternative for small stdout/stderr
   retrieval from a job
 - https://docs.alcf.anl.gov/data-management/data-transfer/using-globus/

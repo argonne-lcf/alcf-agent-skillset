@@ -42,13 +42,58 @@ Prefer `alcf-iri-job` instead when:
 
 ## Auth
 
-Globus Compute uses its own auth (Globus Auth tokens cached under
-`~/.globus_compute/`). The first remote call in a session will block on an
-interactive browser login if the cache is empty or expired. There is no
-`$alcf_access_token` involvement — that's only for the IRI API.
+There are two ways `remote_bash.py` can authenticate to Globus Compute, and
+the script tries them in this order:
 
-If the user hits an auth error, tell them to run any `remote_bash.py` call
-in a real terminal once to refresh the cache, then come back.
+1. **`alcf-tokens` (preferred).** If the `alcf-tokens` package is available and
+   the user has logged in with it, the script calls
+   `alcf_tokens.auth.get_service_authorizer("globus-compute")` and builds the
+   Globus Compute `Client` from that authorizer. `alcf-tokens` is the
+   centralized ALCF token CLI — see the `alcf-tokens` skill
+   (`../software/alcf-tokens.md`) for the full reference.
+2. **globus-compute-sdk default cache (fallback).** If `alcf-tokens` isn't
+   installed or no valid token is found, `gcc` is left `None` and the SDK
+   falls back to its own Globus Auth cache under `~/.globus_compute/`. The
+   first remote call then blocks on an interactive browser login if that
+   cache is empty or expired.
+
+There is no `$alcf_access_token` involvement — that's only for the IRI API.
+
+### Making sure Claude finds alcf-tokens–managed tokens
+
+If the user manages their tokens with `alcf-tokens`, two things must line up
+or the script silently drops back to the `~/.globus_compute/` path:
+
+- **`alcf-tokens` must be importable in the env the script runs in.** The
+  script's shebang runs it via `uv run --script`, and the inline dependency
+  block at the top of `remote_bash.py` now lists `alcf-tokens`, so `uv run`
+  installs it into the script's cache automatically. If you instead invoke it
+  inside an existing venv/conda env (`python ./remote-bash/remote_bash.py ...`),
+  that env must have `alcf-tokens` installed (`pip install alcf-tokens`).
+- **The user must have logged in for the `globus-compute` service:**
+
+  ```bash
+  alcf-tokens login globus-compute      # or: alcf-tokens login   (all services)
+  ```
+
+  Tokens are stored per-user (not per-venv) in the shared `alcf-tokens` cache, so
+  any env with the package installed picks them up, and `get_service_authorizer`
+  refreshes the access token as needed. See the `alcf-tokens` skill
+  (`../software/alcf-tokens.md`) for the cache path and details.
+
+Verify the token is present before a run with `alcf-tokens get-token
+globus-compute` (exit 0 with non-empty output = present). Use `get-token`, not
+`test-token` — the latter reports "not yet implemented" for this service.
+
+If `alcf-tokens` has no valid token, `get_service_authorizer` raises
+`AuthError` telling the user to run `alcf-tokens login`. The script catches
+that, prints a one-line note to stderr, and falls back to the SDK default
+auth — so if you expected alcf-tokens to be used but see that note, the fix is
+`alcf-tokens login globus-compute`.
+
+If the user hits an auth error and is **not** using alcf-tokens, tell them to
+run any `remote_bash.py` call in a real terminal once to refresh the
+`~/.globus_compute/` cache, then come back.
 
 ## Invocation
 
